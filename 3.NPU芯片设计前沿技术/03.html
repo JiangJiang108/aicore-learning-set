@@ -1,0 +1,434 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>第3章 NPU核心架构</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background: linear-gradient(135deg, #e8f4f8 0%, #d1e9f0 100%);
+            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+            padding: 20px;
+        }
+        /* 双边框设计：外边框 + 内阴影 */
+        .double-border {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 2px solid #f1c40f;
+            border-radius: 24px;
+            box-shadow: 0 20px 30px -15px rgba(0,0,0,0.2), inset 0 1px 0 0 #fff8e0;
+            overflow: hidden;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 0;
+        }
+        .sidebar {
+            background: #fefcf5;
+            border-right: 2px solid #fdebb3;
+            padding: 24px 16px;
+        }
+        .sidebar h3 {
+            font-size: 1.4rem;
+            color: #b45f06;
+            border-left: 5px solid #f39c12;
+            padding-left: 15px;
+            margin-bottom: 25px;
+        }
+        .chapter-list {
+            list-style: none;
+        }
+        .chapter-list li {
+            margin-bottom: 6px;
+        }
+        .chapter-list a {
+            display: block;
+            padding: 8px 12px;
+            text-decoration: none;
+            color: #2c3e50;
+            border-radius: 12px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .chapter-list a:hover {
+            background: #fdebd0;
+            transform: translateX(3px);
+        }
+        .chapter-list .active {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 2px 5px rgba(59,130,246,0.3);
+        }
+        .main-content {
+            padding: 30px 35px;
+            background: white;
+        }
+        .footer-nav {
+            margin-top: 45px;
+            padding-top: 20px;
+            border-top: 2px solid #f0e6d2;
+            display: flex;
+            justify-content: space-between;
+        }
+        .footer-nav a {
+            padding: 8px 24px;
+            background: #f1f5f9;
+            text-decoration: none;
+            color: #1e40af;
+            border-radius: 40px;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+        .footer-nav a:hover {
+            background: #e2e8f0;
+            transform: translateY(-2px);
+        }
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            color: #64748b;
+            border-top: 1px dashed #e2e8f0;
+            font-size: 0.9rem;
+        }
+        h2 { color: #1e3a8a; border-left: 6px solid #f59e0b; padding-left: 15px; margin: 20px 0 15px; }
+        h3 { color: #2c3e50; margin: 20px 0 10px; }
+        pre {
+            background: #2d2f36; color: #f8f8f2; padding: 15px; border-radius: 12px;
+            overflow-x: auto; font-family: 'JetBrains Mono', monospace; margin: 15px 0;
+        }
+        table {
+            width: 100%; border-collapse: collapse; margin: 15px 0; background: #fefce8;
+        }
+        th, td {
+            border: 1px solid #fcd34d; padding: 10px; text-align: left;
+        }
+        th { background: #fffbeb; }
+        .tip, .warning, .highlight {
+            padding: 12px 18px; border-radius: 16px; margin: 15px 0;
+        }
+        .tip { background: #e0f2fe; border-left: 6px solid #0ea5e9; }
+        .warning { background: #fee2e2; border-left: 6px solid #ef4444; }
+        .highlight { background: #fef9c3; border: 1px solid #facc15; }
+    </style>
+</head>
+<body>
+<div class="double-border">
+<div class="container">
+    <div class="sidebar">
+        <h3>📚 课程目录</h3>
+        <ul class="chapter-list">
+            <li><a href="01.html" class="">第1章 NPU芯片概述</a></li>
+<li><a href="02.html" class="">第2章 神经网络基础</a></li>
+<li><a href="03.html" class="active">第3章 NPU核心架构</a></li>
+<li><a href="04.html" class="">第4章 存算一体技术</a></li>
+<li><a href="05.html" class="">第5章 稀疏化与剪枝技术</a></li>
+<li><a href="06.html" class="">第6章 量化技术</a></li>
+<li><a href="07.html" class="">第7章 数据流优化</a></li>
+<li><a href="08.html" class="">第8章 片上网络(NoC)</a></li>
+<li><a href="09.html" class="">第9章 多核NPU架构</a></li>
+<li><a href="10.html" class="">第10章 NPU编译器设计</a></li>
+<li><a href="11.html" class="">第11章 指令集架构(ISA)</a></li>
+<li><a href="12.html" class="">第12章 硬件加速器设计</a></li>
+<li><a href="13.html" class="">第13章 低功耗设计技术</a></li>
+<li><a href="14.html" class="">第14章 先进封装与互联</a></li>
+<li><a href="15.html" class="">第15章 NPU验证与测试</a></li>
+<li><a href="16.html" class="">第16章 RISC-V在NPU中的应用</a></li>
+<li><a href="17.html" class="">第17章 图神经网络(GNN)加速</a></li>
+<li><a href="18.html" class="">第18章 大模型推理加速</a></li>
+<li><a href="19.html" class="">第19章 NPU软件栈</a></li>
+<li><a href="20.html" class="">第20章 可重构NPU</a></li>
+<li><a href="21.html" class="">第21章 模拟与混合信号NPU</a></li>
+<li><a href="22.html" class="">第22章 NPU安全与隐私</a></li>
+<li><a href="23.html" class="">第23章 光计算NPU</a></li>
+<li><a href="24.html" class="">第24章 量子神经网络</a></li>
+<li><a href="25.html" class="">第25章 NPU设计自动化</a></li>
+<li><a href="26.html" class="">第26章 边缘NPU</a></li>
+<li><a href="27.html" class="">第27章 NPU基准测试与评估</a></li>
+<li><a href="28.html" class="">第28章 NPU发展趋势</a></li>
+<li><a href="29.html" class="">第29章 NPU芯片设计案例</a></li>
+<li><a href="30.html" class="">第30章 NPU芯片设计实践</a></li>
+        </ul>
+    </div>
+    <div class="main-content">
+        <h2>3. NPU核心架构：脉动阵列与数据流设计</h2>
+
+<p>各位同学，今天我们来聊聊NPU最核心的架构——脉动阵列。说实话，这个结构我研究了快十年，每次看都觉得它有种数学上的美感。咱们从原理开始，一步步拆解。</p>
+
+<h3>3.1 脉动阵列的基本原理</h3>
+
+<p>脉动阵列（Systolic Array）这个名字，其实挺形象的。你想象一下心脏泵血，血液有节奏地流向全身。在芯片里，数据就像血液一样，在计算单元（PE）之间有节奏地流动。</p>
+
+<p>我当年第一次接触这个概念，是在读Kung教授1982年的论文。那时候觉得：这玩意儿真聪明！为什么？因为它解决了芯片设计里一个老大难问题——<strong>数据搬运比计算还耗能</strong>。</p>
+
+<div class="highlight">
+<p><strong>核心思想：</strong>让数据在PE之间"流"起来，每个PE只做简单的乘加运算，数据复用率极高。说白了，就是用空间换时间，用局部性换效率。</p>
+</div>
+
+<p>一个典型的脉动阵列长这样：</p>
+
+<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景 -->
+  <rect width="600" height="400" fill="#f0f8ff" rx="10"/>
+  
+  <!-- 标题 -->
+  <text x="300" y="30" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">4×4 脉动阵列结构图</text>
+  
+  <!-- 绘制PE网格 -->
+  <g>
+    <!-- 行1 -->
+    <rect x="100" y="60" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="130" y="90" text-anchor="middle" font-size="12" fill="#333">PE00</text>
+    
+    <rect x="180" y="60" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="210" y="90" text-anchor="middle" font-size="12" fill="#333">PE01</text>
+    
+    <rect x="260" y="60" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="290" y="90" text-anchor="middle" font-size="12" fill="#333">PE02</text>
+    
+    <rect x="340" y="60" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="370" y="90" text-anchor="middle" font-size="12" fill="#333">PE03</text>
+    
+    <!-- 行2 -->
+    <rect x="100" y="130" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="130" y="160" text-anchor="middle" font-size="12" fill="#333">PE10</text>
+    
+    <rect x="180" y="130" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="210" y="160" text-anchor="middle" font-size="12" fill="#333">PE11</text>
+    
+    <rect x="260" y="130" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="290" y="160" text-anchor="middle" font-size="12" fill="#333">PE12</text>
+    
+    <rect x="340" y="130" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="370" y="160" text-anchor="middle" font-size="12" fill="#333">PE13</text>
+    
+    <!-- 行3 -->
+    <rect x="100" y="200" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="130" y="230" text-anchor="middle" font-size="12" fill="#333">PE20</text>
+    
+    <rect x="180" y="200" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="210" y="230" text-anchor="middle" font-size="12" fill="#333">PE21</text>
+    
+    <rect x="260" y="200" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="290" y="230" text-anchor="middle" font-size="12" fill="#333">PE22</text>
+    
+    <rect x="340" y="200" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="370" y="230" text-anchor="middle" font-size="12" fill="#333">PE23</text>
+    
+    <!-- 行4 -->
+    <rect x="100" y="270" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="130" y="300" text-anchor="middle" font-size="12" fill="#333">PE30</text>
+    
+    <rect x="180" y="270" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="210" y="300" text-anchor="middle" font-size="12" fill="#333">PE31</text>
+    
+    <rect x="260" y="270" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="290" y="300" text-anchor="middle" font-size="12" fill="#333">PE32</text>
+    
+    <rect x="340" y="270" width="60" height="50" fill="#e6f3ff" stroke="#4a90d9" stroke-width="2" rx="5"/>
+    <text x="370" y="300" text-anchor="middle" font-size="12" fill="#333">PE33</text>
+  </g>
+  
+  <!-- 数据流箭头 - 水平 -->
+  <defs>
+    <marker id="arrowRight" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#e74c3c"/>
+    </marker>
+    <marker id="arrowDown" markerWidth="7" markerHeight="10" refX="3.5" refY="10" orient="auto">
+      <polygon points="0 0, 7 0, 3.5 10" fill="#27ae60"/>
+    </marker>
+  </defs>
+  
+  <!-- 水平数据流（输入特征图） -->
+  <line x1="60" y1="85" x2="95" y2="85" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  <line x1="160" y1="85" x2="175" y2="85" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  <line x1="240" y1="85" x2="255" y2="85" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  <line x1="320" y1="85" x2="335" y2="85" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  
+  <line x1="60" y1="155" x2="95" y2="155" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  <line x1="160" y1="155" x2="175" y2="155" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  <line x1="240" y1="155" x2="255" y2="155" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  <line x1="320" y1="155" x2="335" y2="155" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  
+  <line x1="60" y1="225" x2="95" y2="225" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  <line x1="160" y1="225" x2="175" y2="225" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  <line x1="240" y1="225" x2="255" y2="225" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  <line x1="320" y1="225" x2="335" y2="225" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  
+  <line x1="60" y1="295" x2="95" y2="295" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  <line x1="160" y1="295" x2="175" y2="295" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  <line x1="240" y1="295" x2="255" y2="295" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  <line x1="320" y1="295" x2="335" y2="295" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowRight)"/>
+  
+  <!-- 垂直数据流（权重） -->
+  <line x1="130" y1="40" x2="130" y2="55" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <line x1="130" y1="110" x2="130" y2="125" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <line x1="130" y1="180" x2="130" y2="195" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <line x1="130" y1="250" x2="130" y2="265" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  
+  <line x1="210" y1="40" x2="210" y2="55" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <line x1="210" y1="110" x2="210" y2="125" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <line x1="210" y1="180" x2="210" y2="195" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <line x1="210" y1="250" x2="210" y2="265" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  
+  <line x1="290" y1="40" x2="290" y2="55" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <line x1="290" y1="110" x2="290" y2="125" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <line x1="290" y1="180" x2="290" y2="195" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <line x1="290" y1="250" x2="290" y2="265" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  
+  <line x1="370" y1="40" x2="370" y2="55" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <line x1="370" y1="110" x2="370" y2="125" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <line x1="370" y1="180" x2="370" y2="195" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <line x1="370" y1="250" x2="370" y2="265" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowDown)"/>
+  
+  <!-- 图例 -->
+  <text x="50" y="360" font-size="12" fill="#e74c3c">→ 输入特征图（水平流动）</text>
+  <text x="300" y="360" font-size="12" fill="#27ae60">↓ 权重（垂直流动）</text>
+  <text x="50" y="385" font-size="12" fill="#4a90d9">■ PE：乘加运算单元</text>
+</svg>
+
+<p>你看这个图，数据从左边流进来，权重从上边流下来。每个PE只跟邻居通信。这种局部性，正是硬件设计者梦寐以求的。</p>
+
+<h3>3.2 三种数据流架构</h3>
+
+<p>数据流架构，说白了就是决定"谁不动、谁在动"。我参与过三个NPU项目，每个项目选的数据流都不一样。咱们一个一个说。</p>
+
+<h4>3.2.1 Weight Stationary（权值固定）</h4>
+
+<p><strong>核心思路：</strong>权重加载到PE后就不动了，输入特征图在阵列里流动，部分和在PE间累加传递。</p>
+
+<p>我个人习惯在卷积层用这种架构。为什么？因为卷积的权重复用率极高。你想想看，一个3×3的卷积核，要在整个特征图上滑动，权重被反复使用。让权重待在PE里不动，能省掉大量搬运功耗。</p>
+
+<div class="tip">
+<p><strong>我的经验：</strong>在7nm工艺下，一次DRAM访问的能耗大约是SRAM的100倍。Weight Stationary能减少权重搬运，对能效提升非常明显。我曾在某个项目里，靠这个设计把能效比提升了3倍。</p>
+</div>
+
+<h4>3.2.2 Output Stationary（输出固定）</h4>
+
+<p><strong>核心思路：</strong>输出部分和在PE里累加，输入特征图和权重都在阵列里流动。</p>
+
+<p>这种架构适合全连接层。我记得有一次做BERT的NPU加速，全连接层的计算量占了大头。用Output Stationary，每个PE负责一个输出神经元的部分和累加，最后再汇总。这样能减少写回存储器的次数。</p>
+
+<p>不过要注意，Output Stationary对PE的本地存储要求更高。每个PE需要更大的累加器，不然精度会丢。</p>
+
+<h4>3.2.3 Systolic Dataflow（脉动数据流）</h4>
+
+<p>这是Google TPU用的方案。输入特征图和权重都在流动，但方向不同。就像我前面画的图那样，一个水平流，一个垂直流。</p>
+
+<p>这种架构的优点是<strong>平衡性好</strong>。没有哪个数据是"固定"的，所以阵列的利用率可以做到很高。但代价是控制逻辑复杂一些。</p>
+
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse; width:100%; margin:15px 0;">
+  <tr style="background-color:#e6f3ff;">
+    <th>特性</th>
+    <th>Weight Stationary</th>
+    <th>Output Stationary</th>
+    <th>Systolic Dataflow</th>
+  </tr>
+  <tr>
+    <td>适用场景</td>
+    <td>卷积层</td>
+    <td>全连接层</td>
+    <td>通用矩阵乘</td>
+  </tr>
+  <tr>
+    <td>数据复用</td>
+    <td>权重复用高</td>
+    <td>输出复用高</td>
+    <td>均衡</td>
+  </tr>
+  <tr>
+    <td>PE存储需求</td>
+    <td>中等（存权重）</td>
+    <td>较大（存累加器）</td>
+    <td>中等</td>
+  </tr>
+  <tr>
+    <td>控制复杂度</td>
+    <td>低</td>
+    <td>中</td>
+    <td>高</td>
+  </tr>
+  <tr>
+    <td>能效比</td>
+    <td>高（卷积场景）</td>
+    <td>高（FC场景）</td>
+    <td>中高</td>
+  </tr>
+</table>
+
+<h3>3.3 片上存储层次设计</h3>
+
+<p>存储层次，这是NPU设计里最容易被低估的部分。我曾经吃过亏——第一版芯片流片回来，算力够，但带宽不够，数据喂不饱计算单元。那叫一个惨。</p>
+
+<p>一个典型的NPU存储层次是这样的：</p>
+
+<ol>
+  <li><strong>全局缓冲区（Global Buffer）</strong>：通常几百KB到几MB，用SRAM实现。这是离计算阵列最近的"大仓库"。</li>
+  <li><strong>局部寄存器（Local Register）</strong>：每个PE内部的小存储，几十到几百字节。存权重或部分和。</li>
+  <li><strong>累加器（Accumulator）</strong>：专门存累加结果的寄存器，精度要高，我一般用32位浮点或16位。</li>
+</ol>
+
+<div class="warning">
+<p><strong>避坑指南：</strong>我曾经在一个项目里，把全局缓冲区设计得太大，结果面积爆炸，时序跑不过。后来学乖了——先算带宽需求，再定缓冲区大小。公式很简单：<code>Buffer Size = 计算阵列吞吐量 × 数据复用周期数</code>。</p>
+</div>
+
+<p>这里给个参考配置：</p>
+
+<pre><code>// 一个典型的NPU存储配置示例
+// 假设：128×128的脉动阵列，INT8精度
+
+#define PE_ROWS 128
+#define PE_COLS 128
+#define DATA_WIDTH 8  // bits
+
+// 全局缓冲区：2MB SRAM
+// 可以存 2MB / (128×128×1B) ≈ 128 层特征图
+#define GLOBAL_BUFFER_SIZE (2 * 1024 * 1024)  // bytes
+
+// 每个PE的局部存储：256字节
+// 可以存 256 / 1 = 256 个权重值
+#define PE_LOCAL_MEM_SIZE 256  // bytes
+
+// 累加器：32位精度，每个PE一个
+#define ACCUMULATOR_WIDTH 32  // bits</code></pre>
+
+<h3>3.4 计算单元（PE）设计</h3>
+
+<p>PE是脉动阵列的"细胞"。设计得好不好，直接决定芯片的算力和能效。</p>
+
+<p>一个典型的PE包含：</p>
+
+<ul>
+  <li><strong>乘法器</strong>：INT8或FP16，看应用场景</li>
+  <li><strong>加法器</strong>：支持累加操作</li>
+  <li><strong>本地寄存器</strong>：存权重或中间结果</li>
+  <li><strong>数据通路</strong>：跟邻居通信的接口</li>
+</ul>
+
+<p>我建议PE设计时注意三点：</p>
+
+<ol>
+  <li><strong>位宽选择</strong>：INT8对大多数推理任务够用，但训练场景需要FP16甚至FP32。别盲目追求高位宽，面积和功耗会翻倍。</li>
+  <li><strong>流水线深度</strong>：我一般用2-3级流水线。太深了面积大，太浅了频率上不去。</li>
+  <li><strong>数据复用</strong>：PE内部的数据通路要设计好，尽量减少不必要的寄存器读写。</li>
+</ol>
+
+<div class="highlight">
+<p><strong>核心设计原则：</strong>PE的利用率要达到80%以上才算合格。如果低于这个数，说明你的数据流或存储层次有问题。我见过太多设计，PE阵列做得很大，但实际利用率不到50%——那还不如做小一点，省下来的面积做缓存。</p>
+</div>
+
+<p>好了，关于脉动阵列的核心架构，咱们就聊到这儿。这些内容是我多年实践的心得，希望能帮到你。记住，架构设计没有银弹，关键是根据应用场景做取舍。</p>
+        <div class="footer-nav">
+            <a href="02.html">← 上一章</a>
+            <a href="index.html">📖 返回目录</a>
+            <a href="04.html">下一章 →</a>
+        </div>
+        <footer>公众号:蓝海资料掘金营，微信deep3321</footer>
+    </div>
+</div>
+</div>
+</body>
+</html>
